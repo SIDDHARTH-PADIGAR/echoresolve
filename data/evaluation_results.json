@@ -1,0 +1,132 @@
+{
+  "passed": 11,
+  "total": 11,
+  "results": [
+    {
+      "id": "CTX-01",
+      "passed": true,
+      "evidence": {
+        "ok": true,
+        "borrower": {
+          "borrower_id": "BOR-EVAL",
+          "name": "Evaluation Borrower",
+          "hardship_status": "reported_job_loss"
+        },
+        "account": {
+          "account_id": "ACC-EVAL",
+          "balance_cents": 125000,
+          "currency": "USD"
+        },
+        "commitments": [],
+        "pending_proposals": [],
+        "source": "persisted_database"
+      }
+    },
+    {
+      "id": "CTX-02",
+      "passed": true,
+      "evidence": {
+        "ok": false,
+        "error": "borrower_not_found",
+        "message": "No verified borrower context is available."
+      }
+    },
+    {
+      "id": "POL-01",
+      "passed": true,
+      "evidence": {
+        "ok": true,
+        "proposal": {
+          "proposal_id": "b046fab6-8bf4-40c1-8fe3-160e0cc2b97b",
+          "borrower_id": "BOR-EVAL",
+          "account_id": "ACC-EVAL",
+          "amount_cents": 5000,
+          "due_date": "2026-10-31",
+          "status": "pending",
+          "expires_at": "2026-10-24T14:13:13.696027+00:00"
+        },
+        "next_action": "Read the exact amount and due date to the borrower and request confirmation."
+      }
+    },
+    {
+      "id": "POL-02",
+      "passed": true,
+      "evidence": {
+        "ok": false,
+        "error": "proposal_rejected",
+        "message": "Proposed amount exceeds the outstanding balance."
+      }
+    },
+    {
+      "id": "POL-03",
+      "passed": true,
+      "evidence": {
+        "ok": false,
+        "error": "proposal_rejected",
+        "message": "Due date cannot be in the past."
+      }
+    },
+    {
+      "id": "CON-01",
+      "passed": true,
+      "evidence": {
+        "proposal_created": true,
+        "commitments_before_confirmation": 0
+      }
+    },
+    {
+      "id": "CON-02",
+      "passed": true,
+      "evidence": {
+        "ok": true,
+        "commitment": {
+          "commitment_id": 54,
+          "account_id": "ACC-EVAL",
+          "amount_cents": 5000,
+          "due_date": "2026-10-31",
+          "status": "pending_confirmation",
+          "idempotency_key": "proposal:0717b8d1-4008-4506-b36b-3c60322c9448",
+          "created_at": "2026-10-24 14:03:13"
+        },
+        "verified": true,
+        "message": "The commitment was saved. Its status is pending confirmation."
+      }
+    },
+    {
+      "id": "CON-03",
+      "passed": true,
+      "evidence": {
+        "ok": false,
+        "reason": "Proposal has expired; create a new proposal."
+      }
+    },
+    {
+      "id": "REL-01",
+      "passed": true,
+      "evidence": {
+        "first_ok": true,
+        "second_ok": false,
+        "commitment_count": 1
+      }
+    },
+    {
+      "id": "REL-02",
+      "passed": true,
+      "evidence": {
+        "proceed": false,
+        "reason": "Commitment persistence was not verified.",
+        "action": "escalate"
+      }
+    },
+    {
+      "id": "SAFE-01",
+      "passed": true,
+      "evidence": {
+        "goal": "Safely handle unsupported request",
+        "steps": [
+          "clarify the request or escalate to a human"
+        ]
+      }
+    }
+  ]
+}
