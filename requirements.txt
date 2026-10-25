@@ -1,0 +1,10 @@
+fastapi
+pydantic
+uvicorn
+pytest
+httpx
+openai
+numpy
+pyaudio
+soundfile
+prompt_toolkit
