@@ -119,5 +119,5 @@ A previous single local voice run observed about **5.1 s for transcription**, **
 - Synthetic borrower records only; no real collections activity or payment execution.
 - The voice allowlist is not authentication or a robust security boundary.
 - The API has no authentication; do not expose it to untrusted networks.
-- The published `main` branch currently hard-codes `data/echoresolve.db`. Tests and `scripts/run_evaluation.py` reset records in their configured database, so do not run them against valuable local data. Confirm database isolation before evaluating.
+- The published `main` branch currently hard-codes `data/echoresolve.db`. Several tests reset records in that configured database, and `scripts/run_evaluation.py` deletes and recreates evaluation records. Do not run tests/evaluation against valuable local data unless the checkout has been updated and verified to isolate its test database.
 - No production load/recovery evaluation, comprehensive privacy controls, or collections-specific compliance validation has been demonstrated.
