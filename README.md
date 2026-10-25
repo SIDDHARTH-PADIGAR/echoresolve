@@ -1,64 +1,68 @@
 # EchoResolve
 
-EchoResolve is a local voice interface and borrower-workflow prototype for synthetic collections scenarios. It supports read-only balance questions through separate audio transcription (ASR) and speech synthesis (TTS), backed by a FastAPI service that reads borrower facts and exposes guarded proposal/confirmation workflows.
+EchoResolve is a local voice-enabled collections prototype for synthetic borrower accounts. It uses separate speech recognition (ASR) and speech synthesis (TTS) around a FastAPI backend, retrieving account facts from SQLite and enforcing safeguards around payment proposals and confirmations.
 
 ## Contents
 
-- [About](#about)
+- [Features](#features)
 - [Architecture](#architecture)
-- [Stack](#stack)
-- [Getting Started](#getting-started)
+- [Tech Stack](#tech-stack)
+- [Setup](#setup)
 - [Demo](#demo)
 - [Evaluation](#evaluation)
 - [Limitations](#limitations)
 
-## About
+## Features
 
-- **Persisted context:** borrower and account facts come from SQLite, not model-generated answers.
-- **Proposal safeguards:** policy-checked proposals are stored as pending; confirmation is tied to a saved proposal ID and rejects unknown/wrong-borrower, expired, or already-processed proposals.
-- **Explicit confirmation:** the runtime checks proposal ID, amount, and due date before confirmation. A confirmed proposal records a commitment as `pending_confirmation`; it does not execute a payment.
-- **Evidence checks:** deterministic runtime checks reject unsupported tools, unverified context sources, incomplete proposal details, and confirmation results without persistence evidence.
-- **Voice restriction:** only narrowly matched read-only balance questions are sent to the backend. Other transcripts are rejected at the voice client.
+- **Verified borrower context** — account facts are retrieved from SQLite.
+- **Guarded payment proposals** — creating a proposal does not create a commitment.
+- **Explicit confirmation** — checks proposal ID, amount, and due date before confirmation.
+- **Expiry and replay protection** — rejects expired or previously processed proposals and prevents duplicate commitments.
+- **Response verification** — checks tool results before reporting success.
+- **Read-only voice gate** — only narrowly recognized balance questions reach the backend.
+- **Test isolation** — test database isolation must be verified in the checkout before running database-resetting tests.
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    A[Microphone or WAV] --> B[Local LFM2.5-Audio ASR]
+    A[Microphone or WAV] --> B[LFM2.5-Audio ASR]
     B --> C[Transcript]
     C --> D{Read-only balance allowlist}
-    D -- Reject --> E[Stop: no backend request]
-    D -- Allow --> F[Voice bridge]
-    F --> G[FastAPI]
+    D -- Rejected --> E[Stop]
+    D -- Allowed --> F[Voice bridge]
+    F --> G[FastAPI backend]
     G --> H[Ollama intent router]
     G --> I[Agent runtime and evidence checks]
     I <--> J[(SQLite)]
     I --> K[Verified response text]
-    K --> L[Local LFM2.5-Audio TTS]
+    K --> L[LFM2.5-Audio TTS]
     L --> M[Audio playback]
 ```
 
-The voice CLI is restricted to read-only balance questions. Proposal and confirmation behavior is exposed separately through the API/agent workflow; voice does not initiate those actions.
+The voice CLI is restricted to read-only balance queries. Payment proposal and confirmation workflows are exposed separately through the API and agent runtime.
 
-## Stack
+## Tech Stack
 
 - Python 3.11
 - FastAPI, Pydantic, Uvicorn
 - SQLite
-- Ollama with `llama3.2:1b` for intent classification
-- LFM2.5-Audio served through an OpenAI-compatible API for ASR and TTS
+- Ollama — `llama3.2:1b` for intent classification
+- LFM2.5-Audio — ASR and TTS through an OpenAI-compatible server
 - Pytest
 
-## Getting Started
+## Setup
 
 ### Prerequisites
 
 - Python 3.11
-- Ollama with `llama3.2:1b` pulled locally
-- A running LFM2.5-Audio server reachable at `http://127.0.0.1:9931/v1`
-- Microphone/speaker support for recording and playback; a WAV file can be used instead of a microphone
+- [Ollama](https://ollama.com/) with `llama3.2:1b`
+- A running LFM2.5-Audio server at `http://127.0.0.1:9931/v1`
+- Audio input/output support for microphone recording and playback; WAV input is an alternative
 
-Create a virtual environment in PowerShell from the repository root:
+### Install
+
+Run from the repository root in PowerShell:
 
 ```powershell
 python -m venv .venv
@@ -68,7 +72,7 @@ ollama pull llama3.2:1b
 $env:PYTHONPATH = ".\src"
 ```
 
-The requirements file covers the Python API, tests, and voice client. PyAudio may need OS-specific audio drivers or build support.
+PyAudio may require platform-specific audio drivers or build support.
 
 ### Start the API
 
@@ -77,7 +81,7 @@ $env:PYTHONPATH = ".\src"
 python -m uvicorn echoresolve.api:app --host 127.0.0.1 --port 8000
 ```
 
-Check readiness in another terminal:
+Check that it responds:
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/health
@@ -85,39 +89,37 @@ Invoke-RestMethod http://127.0.0.1:8000/health
 
 ### Start the voice CLI
 
-With the API and audio model server running, use a second terminal:
+With the API and audio model server running, open another terminal:
 
 ```powershell
 $env:PYTHONPATH = ".\src"
 python .\scripts\echoresolve_voice.py --base-url http://127.0.0.1:9931/v1 --agent-url http://127.0.0.1:8000
 ```
 
-The default synthetic borrower is `BOR-1001`. The context endpoint is `GET /borrowers/BOR-1001/context`.
-
 ## Demo
 
-1. Start the local Ollama model, LFM2.5-Audio server, and FastAPI service.
-2. Launch the voice CLI and enter `/record`, then ask: “What is my outstanding balance?”
-3. Alternatively, enter `/wav <path>` to process a WAV file.
-4. The client transcribes audio, checks the transcript against the read-only allowlist, sends allowed questions to the backend, and speaks the verified response.
-5. Enter `/quit` to exit.
+1. Start Ollama, the LFM2.5-Audio server, and the FastAPI API.
+2. Launch the voice CLI and enter `/record`.
+3. Ask: “What is my outstanding balance?”
+4. Alternatively, use `/wav <path>` to process an existing WAV file.
+5. The transcript passes through the read-only voice gate before reaching the backend. The response is generated from persisted borrower context and spoken through TTS.
+6. Enter `/quit` to exit.
+
+The default synthetic borrower is `BOR-1001`. The API context endpoint is `GET /borrowers/BOR-1001/context`.
 
 ## Evaluation
 
 | Check | Reported result |
 |---|---:|
-| Full automated suite | 71 passed |
+| Automated test suite | 71 passed |
 | Voice-intent regression tests | 18 passed |
 | Named functional scenarios | 11/11 passed |
 
-The named scenarios cover borrower context, proposal rules, confirmation, expiry, replay protection, evidence verification, and safe fallback. These counts were observed in the Windows working copy; they have not been rerun against the published `main` checkout here.
+The named scenarios cover borrower context, proposal policy, confirmation, expiry, duplicate-confirmation prevention, response verification, and safe fallback.
 
-A previous single local voice run observed about **5.1 s for transcription**, **6.3 s for speech generation**, and **4.9 s of generated audio**. This is a single-run observation, not a controlled benchmark or guarantee.
+**Verification note:** These results were previously reported from the Windows working copy; they have not been rerun against the published `main` checkout here. The published code hard-codes `data/echoresolve.db`, and tests/evaluation can reset records. Verify database isolation before running them against data you need to preserve.
 
-## Limitations
-
-- Synthetic borrower records only; no real collections activity or payment execution.
-- The voice allowlist is not authentication or a robust security boundary.
+A previous single local run observed approximately **5.1 seconds for transcription**, **6.3 seconds for speech generation**, and **4.9 seconds of generated audio**. These are observations from one run, not benchmark results or guarantees.
 - The API has no authentication; do not expose it to untrusted networks.
-- The published `main` branch currently hard-codes `data/echoresolve.db`. Several tests reset records in that configured database, and `scripts/run_evaluation.py` deletes and recreates evaluation records. Do not run tests/evaluation against valuable local data unless the checkout has been updated and verified to isolate its test database.
-- No production load/recovery evaluation, comprehensive privacy controls, or collections-specific compliance validation has been demonstrated.
+- Dependency versions are not pinned in a lockfile.
+- Production security, load/recovery behavior, privacy controls, and collections-specific compliance have not been demonstrated.
